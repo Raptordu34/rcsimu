@@ -1,7 +1,6 @@
 package fr.ensma.a3.ia.server;
 
-import fr.ensma.a3.ia.business.processor.MotionDataProcessor;
-import fr.ensma.a3.ia.dbox.DboxController;
+import fr.ensma.a3.ia.business.service.MotionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,27 +41,21 @@ public class ServerMain {
         logger.info("D-BOX: {}", dboxEnabled ? "activée" : "désactivée");
 
         try {
-            // Création du processeur
-            MotionDataProcessor processor = new MotionDataProcessor();
+            // Création du service métier (encapsule processeur + driver)
+            MotionService motionService = new MotionService(dboxEnabled);
 
-            // Création du contrôleur D-BOX (si activé)
-            DboxController dboxController = null;
-            if (dboxEnabled) {
-                try {
-                    dboxController = new DboxController();
-                    dboxController.connect();
-                    dboxController.start();
-                    logger.info("D-BOX connectée et démarrée");
-                } catch (Exception e) {
-                    logger.error("Erreur de connexion D-BOX: {}. Mode test activé.", e.getMessage());
-                    dboxController = null;
+            // Démarrage du service
+            if (!motionService.start()) {
+                logger.error("Échec du démarrage du service: {}", motionService.getLastError());
+                if (dboxEnabled) {
+                    logger.info("Passage en mode test (sans D-BOX)...");
+                    motionService = new MotionService(false);
+                    motionService.start();
                 }
             }
 
             // Création du handler
-            SensorDataHandler handler = dboxController != null
-                ? new SensorDataHandler(processor, dboxController)
-                : new SensorDataHandler(processor);
+            SensorDataHandler handler = new SensorDataHandler(motionService);
 
             // Création et démarrage du serveur
             MotionWebSocketServer server = new MotionWebSocketServer(port, handler);
@@ -72,19 +65,12 @@ public class ServerMain {
             logger.info("Appuyez sur Ctrl+C pour arrêter");
 
             // Hook d'arrêt propre
-            final DboxController finalDboxController = dboxController;
+            final MotionService finalMotionService = motionService;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 logger.info("Arrêt du serveur...");
                 server.shutdown();
-                if (finalDboxController != null) {
-                    try {
-                        finalDboxController.stop();
-                        finalDboxController.disconnect();
-                        logger.info("D-BOX déconnectée");
-                    } catch (Exception e) {
-                        logger.error("Erreur lors de la déconnexion D-BOX: {}", e.getMessage());
-                    }
-                }
+                finalMotionService.close();
+                logger.info("Service arrêté proprement");
             }));
 
             // Boucle principale (attente)

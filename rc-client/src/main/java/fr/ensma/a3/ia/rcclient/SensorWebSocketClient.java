@@ -99,12 +99,27 @@ public class SensorWebSocketClient extends WebSocketClient {
 
         AllSensorDataDTO dto = AllSensorDataDTO.fromAllSensorData(data);
         String json = objectMapper.writeValueAsString(dto);
+
+        // --- DEBUT MODIFICATION ---
+        if (dto.getMpuData() != null) {
+            // %.2f signifie : nombre flottant avec 2 chiffres après la virgule
+            String display = String.format("\rDATA >> Acc: [%.2f, %.2f, %.2f] | Gyro: [%.2f, %.2f, %.2f]      ",
+                dto.getMpuData().getAccelX(),
+                dto.getMpuData().getAccelY(),
+                dto.getMpuData().getAccelZ(),
+                dto.getMpuData().getGyroX(),
+                dto.getMpuData().getGyroY(),
+                dto.getMpuData().getGyroZ()
+            );
+            System.out.print(display);
+        } else {
+            System.out.print("\rDATA >> (Données MPU manquantes)      ");
+        }
+        System.out.flush();
+        // --- FIN MODIFICATION ---
+        
         send(json);
         messagesSent++;
-
-        if (messagesSent % 50 == 0) {
-            logger.debug("Messages envoyés: {}", messagesSent);
-        }
     }
 
     public void shutdown() {
