@@ -16,6 +16,7 @@ public final class SimuControllerBusiness implements ISimuControllerBusiness {
 
     /* ========= PARAMÈTRES MÉTIER ========= */
     private static final float DEAD_ZONE = 0.05f;
+    private static final float STEER_SENSITIVITY = 5.0f; // Multiplicateur de sensibilité du volant (>1 = plus sensible)
     private static final int BTN_RESET_CAMERA = 0;
 
     public SimuControllerBusiness(IWindowsInputAPIController input) {
@@ -137,6 +138,8 @@ public final class SimuControllerBusiness implements ISimuControllerBusiness {
         // Volant Simucube (di_lX) + Manette Xbox (lx)
         // Les deux sont centrés [-1..1]. On somme pour supporter l'un ou l'autre.
         float val = a.getDix() + a.getLx();
+        // Appliquer le multiplicateur de sensibilité avant clamping
+        val *= STEER_SENSITIVITY;
         return applyDeadZone(clamp11(val));
     }
 

@@ -30,6 +30,12 @@ public class ServoControlBusinessAPI implements IServoControlBusinessAPI {
 
     private DriverData previousValues;
 
+    /* ========= ÉTAT MACHINE FREINAGE/REVERSE ========= */
+    // true = on a freiné et relâché depuis la dernière avance, prêt pour reverse
+    private boolean readyForReverse = false;
+    // Seuil de vitesse considéré comme "arrêté" pour autoriser la marche arrière
+    private static final int STOPPED_THRESHOLD = 5;
+
     /**
      * Initialize the API
      */
@@ -115,6 +121,36 @@ public class ServoControlBusinessAPI implements IServoControlBusinessAPI {
 
     }
 
+    /**
+     * Freinage dynamique proportionnel - RÉACTIF, sans délai bloquant.
+     * Envoie un signal négatif proportionnel à la force de freinage demandée.
+     * L'ESC interprète ce signal comme un frein moteur (court-circuit).
+     *
+     * @param brakePercent intensité du freinage (0-100)
+     */
+    private void dynamicBrake(final Integer brakePercent) {
+        if (motorDutyPercent == null) {
+            return;
+        }
+
+        // Freinage proportionnel : plus on appuie fort, plus le frein est puissant
+        Integer brakeForce = Math.min(Math.max(brakePercent, 0), 100);
+
+        // Envoyer signal négatif pour activer le frein dynamique de l'ESC
+        // -100 = frein maximum, 0 = pas de frein
+        int brakeDuty = -brakeForce;
+
+        if (panama.setMotorDutyEscLrp(brakeDuty) != 0) {
+            logger.error("Motor duty ESC failed during dynamic brake");
+            return;
+        }
+        motorDutyPercent = brakeDuty;
+        logger.debug("dynamic brake applied: " + brakeDuty + "%");
+    }
+
+    /**
+     * Ancien freinage avec délai - conservé pour compatibilité (ex: closeDriver)
+     */
     private void brake() {
         if (motorDutyPercent == null) {
             return;
@@ -126,7 +162,7 @@ public class ServoControlBusinessAPI implements IServoControlBusinessAPI {
                 return;
             }
             motorDutyPercent = -80;
-            try { 
+            try {
                 Thread.sleep(300);
             } catch (InterruptedException ignored) {
                 logger.error("Brake process interrupted");
@@ -137,7 +173,7 @@ public class ServoControlBusinessAPI implements IServoControlBusinessAPI {
                 return;
             }
             motorDutyPercent = 80;
-            try { 
+            try {
                 Thread.sleep(175);
             } catch (InterruptedException ignored) {
                 logger.error("Brake process interrupted");
@@ -242,16 +278,47 @@ public class ServoControlBusinessAPI implements IServoControlBusinessAPI {
             brakeValue = driver.getBrake() > 0;
 
             //another thread for dc motor
-            if (brakeValue || (reverseValue > 5 && accelerationValue > 5)) {
-                logger.debug("brake sent");
-                brake();
-            } else if (reverseValue > 5) {
-                logger.debug("reverse sent : " + reverseValue);
-                reverse(reverseValue);
-            } else if (accelerationValue > 5) {
+            // Machine à états pour freinage/reverse :
+            // 1. Accélération → reset état reverse
+            // 2. Frein pendant avance → freinage dynamique
+            // 3. Relâcher frein après freinage → prêt pour reverse
+            // 4. Frein quand prêt → marche arrière
+
+            if (accelerationValue > STOPPED_THRESHOLD) {
+                // On accélère : reset l'état reverse, on n'est plus prêt pour reculer
+                readyForReverse = false;
                 logger.debug("accelerate sent : " + accelerationValue);
                 accelerate(accelerationValue);
+
+            } else if (reverseValue > STOPPED_THRESHOLD) {
+                // Le bouton frein/reverse est appuyé
+
+                if (motorDutyPercent != null && motorDutyPercent > STOPPED_THRESHOLD) {
+                    // CAS 1: On avançait → FREINAGE DYNAMIQUE (réactif, immédiat)
+                    logger.debug("dynamic brake sent (was moving forward): " + reverseValue);
+                    dynamicBrake(reverseValue);
+                    readyForReverse = false;  // Pas encore prêt, on freine
+
+                } else if (readyForReverse) {
+                    // CAS 2: On était arrêté ET on a déjà freiné+relâché → MARCHE ARRIÈRE
+                    logger.debug("reverse sent (ready for reverse): " + reverseValue);
+                    reverse(reverseValue);
+
+                } else {
+                    // CAS 3: On est lent/arrêté mais pas encore passé par le cycle frein+relâche
+                    // → continuer à freiner pour s'assurer de l'arrêt complet
+                    logger.debug("braking to stop: " + reverseValue);
+                    dynamicBrake(reverseValue);
+                }
+
             } else {
+                // Ni accélération ni frein : neutre
+                // Si on était en train de freiner, on devient prêt pour reverse
+                if (motorDutyPercent != null && motorDutyPercent < -STOPPED_THRESHOLD) {
+                    // On était en freinage, maintenant on relâche → prêt pour reverse
+                    readyForReverse = true;
+                    logger.debug("brake released, ready for reverse");
+                }
                 logger.debug("neutral sent");
                 neutral();
             }
