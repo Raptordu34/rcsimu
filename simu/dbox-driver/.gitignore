@@ -1,0 +1,57 @@
+# Maven
+target/
+*.log
+
+# IDEs - Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+
+# IDEs - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDEs - VS Code
+.vscode/
+
+# Visual Studio (C++ Native)
+.vs/
+out/
+build/
+x64/
+Debug/
+Release/
+*.user
+*.suo
+*.sln
+*.sdf
+*.opensdf
+*.vcxproj.user
+
+# C++ Compilation Artifacts
+*.obj
+*.exp
+*.lib
+*.pdb
+*.ilk
+
+# Generated Native Libraries (Output of compile_wrapper.bat)
+*.dll
+*.lib
+*.exp
+*.pdb
+
+# Exceptions (Do not ignore)
+!lib/dbxLive64.dll
+!LPSIMUDevSim/
+!LPSIMUDevSim/**
+
+# Java Native Access / Panama
+hs_err_pid*
+
+# OS specific
+.DS_Store
+Thumbs.db

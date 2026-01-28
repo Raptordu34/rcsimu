@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>fr.ensma.a3.ia</groupId>
+    <artifactId>javacvwebcamframestream</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <javacv.version>1.5.12</javacv.version>
+        
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>${javacv.version}</version>
+        </dependency>
+    </dependencies>
+
+
+    <build>
+        <plugins>
+
+            <!-- Compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <release>25</release>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <!-- Compile C in .so -->
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-antrun-plugin</artifactId>
+    <version>3.1.0</version>
+    <executions>
+        <execution>
+            <id>compile-native</id>
+            <phase>generate-resources</phase>
+            <configuration>
+                <target>
+                    <!-- Crée le dossier cible -->
+                    <mkdir dir="${project.build.directory}/native"/>
+
+                    <!-- Compilation C++ : CameraLib.cpp -->
+                    <exec executable="g++">
+                        <arg value="-std=c++17"/>
+                        <arg value="-O2"/>
+                        <arg value="-fPIC"/>
+                        <arg value="-Wall"/>
+                        <arg value="-I${basedir}/src/main/native"/>
+                        <arg value="-I/usr/local/include/libcamera"/>
+                        <arg value="-I/usr/include"/>
+                        <arg value="-c"/>
+                        <arg value="${basedir}/src/main/native/CameraLib.cpp"/>
+                        <arg value="-o"/>
+                        <arg value="${project.build.directory}/native/CameraLib.o"/>
+                    </exec>
+
+                    <!-- Compilation C++ : camlib.cpp -->
+                    <exec executable="g++">
+                        <arg value="-std=c++17"/>
+                        <arg value="-O2"/>
+                        <arg value="-fPIC"/>
+                        <arg value="-Wall"/>
+                        <arg value="-I${basedir}/src/main/native"/>
+                        <arg value="-I/usr/local/include/libcamera"/>
+                        <arg value="-c"/>
+                        <arg value="${basedir}/src/main/native/camlib.cpp"/>
+                        <arg value="-o"/>
+                        <arg value="${project.build.directory}/native/camlib.o"/>
+                    </exec>
+
+                    <!-- Compilation C : camlib_bind.c (couche finale exposée à Java) -->
+                    <exec executable="gcc">
+                        <arg value="-std=c11"/>
+                        <arg value="-O2"/>
+                        <arg value="-fPIC"/>
+                        <arg value="-Wall"/>
+                        <arg value="-I${basedir}/src/main/native"/>
+                        <arg value="-c"/>
+                        <arg value="${basedir}/src/main/native/camlib_bind.c"/>
+                        <arg value="-o"/>
+                        <arg value="${project.build.directory}/native/camlib_bind.o"/>
+                    </exec>
+
+                    <!-- Lien final : libcam.so (C mais linke C++) -->
+                    <exec executable="g++">
+                        <arg value="-shared"/>
+                        <arg value="-o"/>
+                        <arg value="${project.build.directory}/native/libcam.so"/>
+                        <arg value="${project.build.directory}/native/CameraLib.o"/>
+                        <arg value="${project.build.directory}/native/camlib.o"/>
+                        <arg value="${project.build.directory}/native/camlib_bind.o"/>
+                        <arg value="-L/usr/local/lib"/>
+                        <arg value="-lcamera"/>
+                        <arg value="-lpthread"/>
+                        <arg value="-ljpeg"/>
+                        <arg value="-lturbojpeg"/>
+                    </exec>
+
+                </target>
+            </configuration>
+            <goals>
+                <goal>run</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+
+
+
+            <!-- Package .so in jar-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-native-to-classes</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/native</directory>
+                                    <includes>
+                                        <include>*.so</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copy dependencies -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/dependances</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Javadoc plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                    <charset>UTF-8</charset>
+                    <!-- Ignore warnings for missing descriptions -->
+                    <failOnError>false</failOnError>
+                </configuration>
+            </plugin>
+            
+        </plugins>
+    </build>
+
+</project>

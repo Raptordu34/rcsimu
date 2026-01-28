@@ -1,0 +1,72 @@
+# ====== C/C++ Compiled files ======
+*.o
+*.obj
+*.lo
+*.la
+*.al
+*.pch
+*.pdb
+*.mod
+*.smod
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+# ====== CMake ======
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+install_manifest.txt
+
+# ====== Visual Studio ======
+*.vcxproj.user
+*.vcxproj.filters
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+
+# ====== Build directories ======
+build/
+Build/
+dist/
+bin/
+Debug/
+Release/
+out/
+
+# ====== Java ======
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+/target/
+/out/
+/build/
+
+# ====== Python Tools ======
+__pycache__/
+*.pyc
+
+# ====== Logs ======
+*.log
+
+# ====== Temporary ======
+*.tmp
+*.temp
+
+# ====== OS-specific ======
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ====== VSCode ======
+.vscode/

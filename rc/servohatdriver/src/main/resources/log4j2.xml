@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+
+        <!-- Console -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout
+                pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c - %msg%n"/>
+        </Console>
+
+        <!-- text file with rotation, avoiding having same big text file -->
+        <RollingFile name="File"
+                     fileName="logs/application.txt"
+                     filePattern="logs/application-%d{yyyy-MM-dd}.txt">
+            <PatternLayout
+                pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c - %msg%n"/>
+            <Policies>
+                <!-- new .txt every day -->
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+</Configuration>

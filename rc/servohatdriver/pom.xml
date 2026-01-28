@@ -1,0 +1,213 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>fr.ensma.a3.ia</groupId>
+    <artifactId>servohatdriver</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>servohatdriver</name>
+    <description>servohatdriver project</description>
+
+    <properties>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- Log4j API -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.23.1</version>
+        </dependency>
+
+        <!-- Log4j Core -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.23.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <release>25</release>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <!-- Compile C in .so -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>compile-c</id>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/native"/>
+                                
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/pwm_driver.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/pwm_driver.o"/>
+                                </exec>
+
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/servo_duty.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/servo_duty.o"/>
+                                </exec>
+
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/utils.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/utils.o"/>
+                                </exec>
+
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/i2c.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/i2c.o"/>
+                                    <arg value="-lpthread"/>
+                                </exec>
+
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/pwm_gpiod_perf.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/pwm_gpiod_perf.o"/>
+                                    <arg value="-lpthread"/>
+                                    <arg value="-lgpiod"/>
+                                </exec>
+
+                                <exec executable="gcc">
+                                    <arg value="-std=c90"/>
+                                    <arg value="-Wall"/>
+                                    <arg value="-fPIC"/>
+                                    <arg value="-c"/>
+                                    <arg value="${basedir}/src/main/native/reader_servo.c"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/reader_servo.o"/>
+                                </exec>
+
+                                <!-- Link both object files into a single shared library -->
+                                <exec executable="gcc">
+                                    <arg value="-shared"/>
+                                    <arg value="-o"/>
+                                    <arg value="${project.build.directory}/native/libdriver.so"/>
+                                    <arg value="${project.build.directory}/native/i2c.o"/>
+                                    <arg value="${project.build.directory}/native/pwm_driver.o"/>
+                                    <arg value="${project.build.directory}/native/servo_duty.o"/>
+                                    <arg value="${project.build.directory}/native/utils.o"/>
+                                    <arg value="${project.build.directory}/native/reader_servo.o"/>
+                                    <arg value="${project.build.directory}/native/pwm_gpiod_perf.o"/>
+                                    <arg value="-lpthread"/>
+                                    <arg value="-lgpiod"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <!-- Package .so in jar-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-native-to-classes</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/native</directory>
+                                    <includes>
+                                        <include>*.so</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copy dependencies -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/dependances</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Javadoc plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                    <charset>UTF-8</charset>
+                    <!-- Ignore warnings for missing descriptions -->
+                    <failOnError>false</failOnError>
+                </configuration>
+            </plugin>
+            
+        </plugins>
+    </build>
+</project>

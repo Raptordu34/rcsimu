@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RCTinyWebCockpit</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            /* empile verticalement */
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        canvas {
+            flex: 1;
+            /* chaque canvas prend 50% */
+            width: 100%;
+            border: 1px solid #333;
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="driver"></canvas>
+    <canvas id="assistant"></canvas>
+
+    <script src="websocket.js"></script>
+
+    <script>
+        // Initialisation pour driver et assistant
+        setupCanvas("driver", "wss://rcsimu-ia.ensma.fr/webcamdriverstream/receiver");
+        setupCanvas("assistant", "wss://rcsimu-ia.ensma.fr/webcamassistantstream/receiver");
+    </script>
+</body>
+
+</html>
